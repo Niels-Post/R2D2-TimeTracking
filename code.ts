@@ -10,6 +10,9 @@ const CLOCKIFY_GET_PROJECT = `https://api.clockify.me/api/v1/workspaces/${clocki
 const CLOCKIFY_GET_TAGS = `https://api.clockify.me/api/v1/workspaces/${clockify_workspace_id}/tags`;
 
 
+/**
+ * Add menu items to the google sheets interface
+ */
 function onOpen() {
     let ui = SpreadsheetApp.getUi();
     // Or DocumentApp or FormApp.
@@ -22,6 +25,11 @@ function onOpen() {
         .addToUi();
 }
 
+/**
+ * Used to replace arguments in strings with url encoded values
+ * @param template Template string, arguments are formatted {i} where i is the index of the argument
+ * @param args Array of arguments to put in the template
+ */
 function url_format(template, args) {
     let ret = template;
     for (let i = 0; i < args.length; i++) {
@@ -30,6 +38,11 @@ function url_format(template, args) {
     return ret;
 }
 
+/**
+ * Make a request to the clockify API
+ * @param template Template request URI
+ * @param arguments Arguments for the template string given in the first argument
+ */
 function clockify_request(template, arguments = []) {
     var response = UrlFetchApp.fetch(
         url_format(template, arguments),
@@ -43,6 +56,10 @@ function clockify_request(template, arguments = []) {
     return JSON.parse(response);
 }
 
+/**
+ * Convert a clockify duration string to an object containing the hour, minute and seconds seperately
+ * @param str The clockify duration string
+ */
 function extractDuration(str: string) {
     let obj = {
         hour: "00",
@@ -87,7 +104,9 @@ function extractDuration(str: string) {
     return obj;
 }
 
-
+/**
+ * Load all clockify entries for the selected week, and match them with the right proof descriptions previously entered in the sheet
+ */
 function loadTimeReg() {
     let entryRange = SpreadsheetApp.getActiveSheet().getRange(entry_range);
     let startDate = SpreadsheetApp.getActiveSheet().getRange(2, 3).getDisplayValue();
@@ -114,10 +133,6 @@ function loadTimeReg() {
         if (oldValues[i][0] != "") {
             oldProofs[oldValues[i][0] + "T" + oldValues[i][1]] = oldValues[i][5];
         }
-        // if (!entryRange.getCell(i,1).isBlank()) {
-        //     let identifier = entryRange.getCell(i, 1).getDisplayValue() + "T" + entryRange.getCell(i, 2).getDisplayValue();
-        //     oldProofs[identifier] = entryRange.getCell(i, 5).getValue();
-        // }
     }
     entryRange.clear();
 
@@ -182,7 +197,9 @@ function loadTimeReg() {
 }
 
 
-
+/**
+ * Open a debug window showing all time entries for the selected week
+ */
 function showEntries() {
     let startDate = SpreadsheetApp.getActiveSheet().getRange(2, 3).getDisplayValue();
     let endDate = SpreadsheetApp.getActiveSheet().getRange(3, 3).getDisplayValue();
@@ -196,6 +213,9 @@ function showEntries() {
 }
 
 
+/**
+ * Show all Clockify projects listed for the current API settings (top of this file)
+ */
 function showProjects() {
     let projects = clockify_request(CLOCKIFY_GET_PROJECT, []);
 
@@ -210,7 +230,11 @@ function showProjects() {
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Projects');
 }
 
-
+/**
+ * Generate a markdown table for a given row/column dataset
+ * @param headers Table headers to use for each column
+ * @param data Data to convert to markdown
+ */
 function generateMDTable(headers, data) {
     let md_headers = "|";
     let md_seperator = "|";
@@ -246,6 +270,9 @@ function generateMDTable(headers, data) {
 const tableHeaders = ["Datum", "Starttijd", "Duur", "Categorie", "Omschrijving", "Details + Bewijslast", "_(C)_"];
 const totalsHeaders = ["Onderdeel", "Deze week", "Totaal"];
 
+/**
+ * Format the currently selected week according to a preset markdown template
+ */
 function getMarkdown() {
     let week = SpreadsheetApp.getActiveSheet().getName();
     let entryTable = generateMDTable(tableHeaders, SpreadsheetApp.getActiveSheet().getRange(entry_range).getDisplayValues());
@@ -281,6 +308,10 @@ ________________________________________________________________________________
 `
 }
 
+/**
+ * Show a markdown string
+ * @param md Markdown string to display, if not given, the markdown template will be used for the currently selected week
+ */
 function showMarkdown(md = getMarkdown()) {
        var htmlOutput = HtmlService
         .createHtmlOutput(`
@@ -304,6 +335,9 @@ ${md}
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Markdown viewer');
 }
 
+/**
+ * Generate and show the combined markdown format for all weeks currently in the sheet
+ */
 function showAllMarkdowns() {
     let sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
     let fullMarkDown = "";
@@ -316,6 +350,10 @@ function showAllMarkdowns() {
     showMarkdown(fullMarkDown);
 }
 
+/**
+ * A function used in the excel sheet to calculate total spent time per week.
+ * This function returns the name of the sheet to the left of the current sheet, so it can be used in cross-references
+ */
 function previousName() {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
